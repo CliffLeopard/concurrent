@@ -115,7 +115,7 @@
 
 * `suspend`/`resume`
 
-  thread.suspend()函数会将线程挂起,但是线程不会释放任何资源,直到在其他线程执行thread.resume().而且在挂起状态Thread.State居然还是RUNNABLE,非常不利于调试.而且如果thread.resume()错误的在threrad.suspend()之前执行了,即thread.suspend()之后没有resume,那么线程将会永远被挂起而且难以检测到,所以一般不会使用这种方式中断程序. 更好的替代方式是使用LockSupport的park和unpark进行优雅的替代.
+  thread.suspend()函数会将线程挂起,但是线程不会释放任何资源,直到在其他线程执行thread.resume().线程在挂起状态Thread.State居然还是RUNNABLE,非常不利于调试.而且如果thread.resume()错误的在threrad.suspend()之前执行了,即thread.suspend()之后没有resume,那么线程将会永远被挂起并难以检测到,所以一般不会使用这种方式中断程序. 更好的替代方式是使用LockSupport的park和unpark进行优雅的替代.
 
 * `join()`/`join(long)`
 
@@ -358,18 +358,42 @@ LockSupport是一个可以用来替代Thread.suspend(),Thread.resume. 在上文�
 
 **方法**
 
-* park(): 
-* park(obj)
+* park(): 使当前线程进入WAIT状态,但是当前线程不会释放已经获取到的锁.
+* park(obj):作用同park(),不同是在进行java dump的时候会打印出waiting for obj的信息. 并且可以通过LockSupport.getBlocker(thread)获取到此obj.
 
-* unpark(thread)
-* parkNanos(obl,long)
-* parkUntil(obl,long)
-* getBlocker(thread)
-* parkNanos(long)
-* parkUntil(long)
-* nextSecondarySeed():int 
+* unpark(thread): 唤醒指定线程继续执行
+* parkNanos(long)/parkNanos(obl,long)
+* parkUntil(long)/parkUntil(obl,long)
+* getBlocker(thread):上文已经讲述
+
+说明:
+
+* 除了上述功能,LockSupport.park()还可以响应thread.interrupt(), 即thread.interrupt()也可以使thread进入unpark状态,不过要开发者手动在park()之后进行判断是否是中断了线程,并对中断线程进行处理.否则线程会继续执行.
+* 如果在LockSupport.park()方法前执行了LockSupport.unpark(),则LockSupport.park()不会造成中断.因为已经有了一张通行证. 但是通行证不能有多张. LockSupport.unpark():获得一张通行证,LockSupport.park()申请并消费一张通行证(不能获取). 这样就解决了suspend和resume存在的问题.
 
 #### 1.3 Semaphore
+
+信号量机制是锁机制的拓展,synchronized和ReentrantLock都只能允许同时又一个线程访问临界资源,而信号量机制则可以允许多个.
+
+**方法**
+
+* Semaphore(int):初始化信号量,设置许可个数
+* Semaphore(int,bool): 公平锁,非公平锁
+* acquire()/acquire(int):申请许可,抛出Interrupted异常
+* acquireUninterruptibly()/acquireUninterruptibly(int):不抛
+* tryAcquire()/tryAcquire(int): 申请(特定数量)的许可,如果得不到,不等待立即返回
+* tryAcquire(long,timeUnit)/tryAcquire(int, long,timeUnit):同上等待特定时间
+* release/release(int): 退回(指定数量的)许可
+* availablePermits():返回剩余许可数
+* drainPermits():请求取出所有许可
+* reducePermits(int):减少许可数量
+* isFair:是否为公平锁
+* hasQueuedThreads():是否有线程等待获取许可
+* getQueueLength():等待队列长度
+
+
+
+以上方法比较简单,不再细说.信号量机制还可以用来实现线程安全的对象池.
 
 #### 1.4 ReadWriteLock
 
