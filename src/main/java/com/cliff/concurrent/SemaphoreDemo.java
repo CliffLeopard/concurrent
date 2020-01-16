@@ -3,12 +3,15 @@ package com.cliff.concurrent;
 import java.util.concurrent.Semaphore;
 
 /**
- * 使用Semaphore实现的线程安全的对象池
+ * 使用Semaphore实现的对象池
  */
 public class SemaphoreDemo {
     public static void main(String[] args) {
-        Semaphore semaphore = new Semaphore(10);
+        SemaphoreDemo semDemo = new SemaphoreDemo();
     }
+
+    protected Object[] items = new Object[100];
+    protected boolean[] used = new boolean[MAX_AVAILABLE];
 
     private static final int MAX_AVAILABLE = 100;
     private final Semaphore available = new Semaphore(MAX_AVAILABLE, true);
@@ -23,9 +26,7 @@ public class SemaphoreDemo {
             available.release();
     }
 
-    // Not a particularly efficient data structure; just for demo
-    protected Object[] items = new Object[100];
-    protected boolean[] used = new boolean[MAX_AVAILABLE];
+
 
     protected synchronized Object getNextAvailableItem() {
         for (int i = 0; i < MAX_AVAILABLE; ++i) {

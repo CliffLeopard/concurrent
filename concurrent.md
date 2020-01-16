@@ -150,6 +150,8 @@
 
 #### 线程优先级
 
+简单,不赘述
+
 ### 3. volatile和synchronized
 
 volatile只保证实例的可见性和有序性,不能完全保证线程安全. 例如i++这种非原子操作.
@@ -177,7 +179,7 @@ synchronized可以实现线程同步,保证线程安全.在synchronized的修饰
 **对比synchronized**
 
 * ReentrantLock提供了丰富的接口,并发编程更容易控制
-* ReentrantLock可实现公平锁和非公平锁,而synchronized只能是非公平锁
+* ReentrantLock可实现公平锁和非公平锁,可以在构造函数中指定,而synchronized只能是非公平锁
 * ReentrantLock可以中断响应. 即thread1在已经启动且在等待回去锁时,可以被中断不再等待. 这在synchronized中时做不到的.
 * ReentrantLock实例本身是锁,而synchronized关键字是修饰其他变量使其变成锁(见上文的三种情况).
 * ReentrantLock和synchronized都是可重入锁,即同一个线程如果获取了锁,在释放之前可以再次获取锁.
@@ -354,7 +356,7 @@ Condition本身是一个接口,ReentrantLock使用的Condition实例实际是AQS
 
 #### 1.2 LockSupport
 
-LockSupport是一个可以用来替代Thread.suspend(),Thread.resume. 在上文中我们分析了suspend和resume存在的问题.
+LockSupport是一个可以用来替代Thread.suspend(),Thread.resume(). 在上文中我们分析了suspend和resume存在的问题.
 
 **方法**
 
@@ -375,6 +377,13 @@ LockSupport是一个可以用来替代Thread.suspend(),Thread.resume. 在上文�
 
 信号量机制是锁机制的拓展,synchronized和ReentrantLock都只能允许同时又一个线程访问临界资源,而信号量机制则可以允许多个.
 
+**特征**
+
+* 支持公平锁和非公平锁
+
+* 支持锁获取期间响应中断
+* 支持多线程同时访问临界资源,构造函数中设置许可个数.
+
 **方法**
 
 * Semaphore(int):初始化信号量,设置许可个数
@@ -393,22 +402,123 @@ LockSupport是一个可以用来替代Thread.suspend(),Thread.resume. 在上文�
 
 
 
-以上方法比较简单,不再细说.信号量机制还可以用来实现线程安全的对象池.
+以上方法比较简单,不再细说.信号量机制可以用来实现线程安全的对象池.
 
 #### 1.4 ReadWriteLock
 
+上文讲的synchronized和ReentrantLock实现的锁,对于读和写的操作都会进行锁定.然而在我们实际程序中,实际上只要保证可见性,读操作并不会造成线程的不同步.读写锁实现了这种锁机制.他符合如下原则:
+
+* 读-读 线程之间并行
+* 读-写 线程之间串行
+* 写-写 线程之间串行
+
+ReadWriteLock是一个接口,ReentrantReadWriteLock和StampedLock.ReadWriteLockView是他的两种实现.StampedLock是JDK1.8时才出现的并发锁,提供了独享写锁,悲观读锁,和乐观读锁. 而ReadWriteLockView和ReadLockView,WriteLockView都是对StampedLock使用方式的封装,使得其在使用上可以方便使用习惯了ReentrantReadWriteLock的程序员使用.下面分别介ReentrantReadWriteLock和StampedLock的使用.
+
+#### ReentrantReadWriteLock
+
+ReentrantReadWriteLock与ReentrantLock一样时jdk1.5推出的锁.是读写锁的一种实现方式.
+
+**特征**
+
+* 实现了公平锁和非公平锁
+* 是可重入锁
+* 读锁不支持Condition,写锁支持Condition
+* 支持锁降级(在没有释放写锁的情况下申请读锁,降级为读锁),不支持锁升级.但是即使使用了锁降级,写锁在最后依然要显式的释放,因为如果不释放写锁,其他线程将获取不到写锁,但是却可以获取到读锁. 这种机制是为了及时保证数据的可见性.
+* 读锁,写锁都支持锁获取期间的中断
+
+**方法**
+
+* writeLock():返回写锁:ReentrantReadWriteLock.WriteLock
+* readLock():返回读锁:ReentrantReadWriteLock.ReadLock
+
+**读写锁的方法**
+
+* lock
+* lockInterruptibly
+* tryLock/tryLock(..)
+* unlock
+* newCondition
+* isHeldByCurrentThread
+* getHoldCount
+
+**与ReentrantLock相同的方法**
+
+* isFair
+* getOwner
+* getReadLockCount
+* isWriteLocked
+* isWriteLockedByCurrentThread
+* getWriteHoldCount
+* getReadHoldCount
+* getQueuedWriterThreads
+* getQueuedReaderThreads
+* hasQueuedThreads
+* hasQueuedThread
+* getQueueLength
+* getQueuedThreads
+* hasWaiters
+* getWaitQueueLength
+* getWaitingThreads
+
+以上方法与ReentrantLock大同小异,不再赘述.
+
+#### StampedLock
+
+StampedLock是读写锁的另一个实现.
+
+**特征**
+
+* 非公平
+* 不可重入
+* 提供了乐观读锁OptimisticRead
+* 不同锁之间都可以相互转换,但是转换有严格的要求
+* 不支持Condition等待
+
+相别于悲观读锁需要获取读锁,以阻挡在读期间被写入内容破坏原子性和可见性,乐观读锁先假定不会被修改,因此不需要锁,因此需要对待读取对象进行拷贝,然后验证其有效性(是否被修改),如果有效才进行各种操作.
+
+StampedLock还提供了不同锁之间的相互转换的方法(tryConvertToWriteLock/tryConvertToReadLock
+/tryConvertToOptimisticRead),对于转换有着严格的要求.为了标记有效性和转换标记,有了Stamped邮戳的概念.邮戳用来标记一个申请的锁(并不一定获得了该锁),如果邮戳为0L则表示申请失败.邮戳的最短有效时间为一年.所以一把锁的使用时间不可以超过一年.
+
+
+
 #### 1.5 CountDownLatch
+
+CountDownLatch比较简单,是一个倒计时计数器.可以在多个线程中调用.初始化时设置次数N,调用await()方法后,锁调用的线程WAITING等待,可在其他线程嗲用countDown()方法,每次计数器减一,直到减为0,等待的线程开始继续运行.
+
+**方法**
+
+* await()/await(long,TimeUnit):使当前线程等待(设置时长,单位)
+* countDown():减值
+* getCount():返回当前还剩余几个等待
 
 #### 1.6 CyclicBarrier
 
+循环栅栏,可以实现CountDownLatch的功能,但是更为强大. 构造函数为一个阈值N,和一个Runnable对象.N存储在内部变量parties中,内部有一个计数值count,初始值为0,每次调用await(),count值加1,当计数到达阈值N时,调用Runnable对象.当count到达N时重新变为0,为下一次循环做准备.
+
+* CyclicBarrier(in t)/CyclicBarrier(int, RunNable)
+* await()/await(long,TimeUnit):抛出InterruptedException异常说明响应中断(thread.interrupt()),BrokenBarrierException()异常:当线程无法被执行时抛出,如:在等待队列的起那面有一个线程被中断了,后面的线程都会抛出此异常
+* getParties():返回阈值N
+* isBroken()
+* reset():重制到下一轮循环
+* getNumberWaiting():等待个数:parties-count
+
 ### 2. ThreadPool 线程池
 
-#### 并发队列
+#### 并发队列(BlockingQueue)
 
-* SynchronousQueue
+* BlockingDeque: 双端队列接口
+
+  * LinkdedBlockingQueue:BlockingDeque的链表实现
+
+    BlockingDeque
+
 * ArrayBlockingQueue
-* LinkdedBlockingQueue
+* DelyQueue
+* DelayedWorkQueue
 * PriorityBlockingQueue
+* SynchronousQueue
+* TransferQueue
+  * LinkedTransferQueue
 
 #### 拒绝策略
 
@@ -416,6 +526,10 @@ LockSupport是一个可以用来替代Thread.suspend(),Thread.resume. 在上文�
 * CallerRunsPolicy
 * DiscardOldestPolicy
 * DiscardPolicy
+
+#### 构造自己的线程池
+
+
 
 #### Fork/Join框架
 
