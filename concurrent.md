@@ -414,7 +414,7 @@ LockSupport是一个可以用来替代Thread.suspend(),Thread.resume(). 在上�
 
 ReadWriteLock是一个接口,ReentrantReadWriteLock和StampedLock.ReadWriteLockView是他的两种实现.StampedLock是JDK1.8时才出现的并发锁,提供了独享写锁,悲观读锁,和乐观读锁. 而ReadWriteLockView和ReadLockView,WriteLockView都是对StampedLock使用方式的封装,使得其在使用上可以方便使用习惯了ReentrantReadWriteLock的程序员使用.下面分别介ReentrantReadWriteLock和StampedLock的使用.
 
-#### ReentrantReadWriteLock
+#### 1.5 ReentrantReadWriteLock
 
 ReentrantReadWriteLock与ReentrantLock一样时jdk1.5推出的锁.是读写锁的一种实现方式.
 
@@ -462,7 +462,7 @@ ReentrantReadWriteLock与ReentrantLock一样时jdk1.5推出的锁.是读写锁�
 
 以上方法与ReentrantLock大同小异,不再赘述.
 
-#### StampedLock
+#### 1.6 StampedLock
 
 StampedLock是读写锁的另一个实现.
 
@@ -481,7 +481,7 @@ StampedLock还提供了不同锁之间的相互转换的方法(tryConvertToWrite
 
 
 
-#### 1.5 CountDownLatch
+#### 1.7 CountDownLatch
 
 CountDownLatch比较简单,是一个倒计时计数器.可以在多个线程中调用.初始化时设置次数N,调用await()方法后,锁调用的线程WAITING等待,可在其他线程嗲用countDown()方法,每次计数器减一,直到减为0,等待的线程开始继续运行.
 
@@ -491,7 +491,7 @@ CountDownLatch比较简单,是一个倒计时计数器.可以在多个线程中�
 * countDown():减值
 * getCount():返回当前还剩余几个等待
 
-#### 1.6 CyclicBarrier
+#### 1.8 CyclicBarrier
 
 循环栅栏,可以实现CountDownLatch的功能,但是更为强大. 构造函数为一个阈值N,和一个Runnable对象.N存储在内部变量parties中,内部有一个计数值count,初始值为0,每次调用await(),count值加1,当计数到达阈值N时,调用Runnable对象.当count到达N时重新变为0,为下一次循环做准备.
 
@@ -501,49 +501,3 @@ CountDownLatch比较简单,是一个倒计时计数器.可以在多个线程中�
 * isBroken()
 * reset():重制到下一轮循环
 * getNumberWaiting():等待个数:parties-count
-
-### 2. ThreadPool 线程池
-
-#### 并发队列(BlockingQueue)
-
-* BlockingDeque: 双端队列接口
-
-  * LinkdedBlockingQueue:BlockingDeque的链表实现
-
-    BlockingDeque
-
-* ArrayBlockingQueue
-* DelyQueue
-* DelayedWorkQueue
-* PriorityBlockingQueue
-* SynchronousQueue
-* TransferQueue
-  * LinkedTransferQueue
-
-#### 拒绝策略
-
-* AbortPolicy
-* CallerRunsPolicy
-* DiscardOldestPolicy
-* DiscardPolicy
-
-#### 构造自己的线程池
-
-
-
-#### Fork/Join框架
-
-### 3. JDK中的并发容器
-
-#### 3.1 ConcurrentHashMap
-
-#### 3.2 CopyOnWriteArrayList
-
-#### 3.3 ConcurrentLinkedQueue
-
-#### 3.4 BlockingQueue
-
-#### 3.5 ConcurrentSkipListMap
-
-
-
